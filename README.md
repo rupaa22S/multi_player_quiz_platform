@@ -73,6 +73,8 @@ Example `.env`:
 ```env
 GEMINI_API_KEY=your-gemini-api-key-here
 OPENAI_API_KEY=your-openai-api-key-here
+GEMINI_MODEL=gemini-2.5-flash 
+OPENAI_MODEL=gpt-4o-mini
 ```
 
 **For Google Gemini (recommended — free tier available):**
