@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBlast | Admin</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="admin">
+  <div id="toast-container"></div>
+  <nav>
+    <a class="logo" href="/">Quiz<span>Blast</span></a>
+  </nav>
+
+  <main class="page container container-wide">
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-yellow">🎛️</div>
+        <div>
+          <h2>Admin Dashboard</h2>
+          <p class="text-muted">Control your room and watch players join live.</p>
+        </div>
+      </div>
+
+      <div class="room-code-display">
+        <div>
+          <div class="text-muted">Room code</div>
+          <button
+            type="button"
+            class="code room-code-button"
+            id="admin-room-code"
+            aria-label="Copy room code"
+            title="Click to copy room code"
+          >------</button>
+        </div>
+        <span id="room-status-badge" class="badge badge-pink">WAITING</span>
+      </div>
+
+      <div class="stats-grid mt-3">
+        <div class="stat-box">
+          <div class="stat-value" id="player-count">0</div>
+          <div class="stat-label">Joined Players</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="quiz-status">Waiting</div>
+          <div class="stat-label">Quiz Status</div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 mb-2">
+        <button id="start-quiz-btn" class="btn btn-success">Start Quiz</button>
+        <button id="end-quiz-btn" class="btn btn-danger">End Quiz</button>
+      </div>
+
+      <div class="divider">Players in room</div>
+      <ul class="user-list" id="users-list"></ul>
+    </div>
+
+    <div class="card hidden" id="questions-section">
+      <div class="card-header">
+        <div class="icon icon-cyan">❔</div>
+        <div>
+          <h2>Quiz Questions</h2>
+          <p class="text-muted">Expand any question to view the answer key.</p>
+        </div>
+      </div>
+      <div id="admin-questions-list" class="accordion-list"></div>
+    </div>
+
+    <div class="card hidden" id="leaderboard-section">
+      <div class="card-header">
+        <div class="icon icon-green">🏆</div>
+        <div>
+          <h2>Leaderboard</h2>
+          <p class="text-muted" id="leaderboard-note">Final leaderboard will appear here after the quiz ends.</p>
+        </div>
+      </div>
+      <ul class="leaderboard" id="leaderboard-list"></ul>
+    </div>
+  </main>
+
+  <script src="/static/script.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

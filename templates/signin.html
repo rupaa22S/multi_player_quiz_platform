@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBlast | Sign In</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    body[data-page="signin"] .signin-form .signin-input {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .85rem 1rem;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      line-height: 1.2;
+      -webkit-appearance: none;
+      appearance: none;
+      box-shadow: none;
+      outline: none;
+    }
+
+    body[data-page="signin"] .signin-form .signin-input:focus {
+      border-color: var(--yellow);
+      box-shadow: 0 0 0 3px rgba(245, 208, 32, .15);
+    }
+
+    body[data-page="signin"] .signin-form .signin-input::placeholder {
+      color: rgba(123, 127, 168, .8);
+    }
+  </style>
+</head>
+<body data-page="signin">
+  <div id="toast-container"></div>
+  <nav>
+    <a class="logo" href="/">Quiz<span>Blast</span></a>
+    <a class="btn btn-outline btn-sm" href="/">Home</a>
+  </nav>
+
+  <main class="page container">
+    <section class="hero hero-left hero-wide">
+      <span class="hero-tag">Secure browser login</span>
+      <h1>Sign in with your email and password.</h1>
+      <p>New email addresses are created automatically the first time you sign in. No OTP, no extra setup.</p>
+    </section>
+
+    <div class="card card-auth">
+      <div class="card-header">
+        <div class="icon icon-yellow">🔐</div>
+        <div>
+          <h2>Sign In</h2>
+          <p class="text-muted">Use the same email on every visit.</p>
+        </div>
+      </div>
+
+      <form id="signin-form" class="signin-form">
+        <div class="form-group">
+          <label for="signin-email">Email</label>
+          <input id="signin-email" name="email" class="signin-input" type="email" placeholder="you@example.com" autocomplete="email" required />
+        </div>
+        <div class="form-group">
+          <label for="signin-password">Password</label>
+          <input id="signin-password" name="password" class="signin-input" type="password" placeholder="Enter a password" autocomplete="current-password" required />
+        </div>
+        <button class="btn btn-primary btn-full" type="submit">Sign In</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/static/script.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBlast | Home</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="home">
+  <div id="toast-container"></div>
+  <nav>
+    <a class="logo" href="/">Quiz<span>Blast</span></a>
+    <div class="nav-actions">
+      <span class="badge badge-muted" id="auth-status">Not signed in</span>
+      <a class="btn btn-outline btn-sm" id="signin-link" href="/signin">Sign In</a>
+      <button class="btn btn-outline btn-sm hidden" id="signout-btn" type="button">Sign Out</button>
+    </div>
+  </nav>
+
+  <main class="page container">
+    <section class="hero">
+      <span class="hero-tag">Real-time multiplayer quiz</span>
+      <h1>Host or join a live quiz over WiFi.</h1>
+      <p>Generate AI-powered questions, invite friends with a room code, and play together in real time using FastAPI and WebSockets.</p>
+      <p class="text-muted" style="margin-top:.75rem">Sign in once, then your quiz identity stays ready in this browser.</p>
+    </section>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon icon-yellow">🧠</div>
+          <div>
+            <h2>Create Room</h2>
+            <p class="text-muted">Generate questions instantly and host a live quiz.</p>
+          </div>
+        </div>
+
+        <form id="create-room-form">
+          <div class="form-group">
+            <label for="admin-name">Your name</label>
+            <input id="admin-name" type="text" placeholder="E.g. Maya" required />
+          </div>
+          <div class="form-group">
+            <label for="quiz-topic">Quiz topic</label>
+            <input id="quiz-topic" type="text" placeholder="E.g. Space, History" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="difficulty">Difficulty</label>
+              <select id="difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="question-type">Question type</label>
+              <select id="question-type">
+                <option value="mcq">MCQ</option>
+                <option value="blank">Fill in the blanks</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="num-questions">Number of questions</label>
+            <input id="num-questions" type="number" min="1" max="12" value="5" required />
+          </div>
+          <button id="create-room-btn" class="btn btn-primary btn-full" type="submit">Create Room & Generate Questions</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="icon icon-cyan">🚪</div>
+          <div>
+            <h2>Join Room</h2>
+            <p class="text-muted">Enter your name and the 6-character room code.</p>
+          </div>
+        </div>
+
+        <form id="join-room-form">
+          <div class="form-group">
+            <label for="player-name">Your name</label>
+            <input id="player-name" type="text" placeholder="E.g. Alex" required />
+          </div>
+          <div class="form-group">
+            <label for="join-room-code">Room code</label>
+            <input id="join-room-code" type="text" placeholder="ABC123" maxlength="6" required />
+          </div>
+          <button class="btn btn-pink btn-full" type="submit">Join Quiz Room</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/script.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

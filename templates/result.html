@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBlast | Results</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="result">
+  <div id="toast-container"></div>
+  <nav>
+    <a class="logo" href="/">Quiz<span>Blast</span></a>
+  </nav>
+
+  <main class="page container container-narrow">
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-green">🎉</div>
+        <div>
+          <h2>Quiz Results</h2>
+          <p class="text-muted">Your leaderboard rank is shown below, followed by your submitted answers and the correct answers.</p>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Player</div>
+          <div class="stat-value" id="result-user-name">You</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="user-score">0</div>
+          <div class="stat-label">Your Score</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="result-room-code">----</div>
+          <div class="stat-label">Room Code</div>
+        </div>
+      </div>
+
+      <div class="divider">Leaderboard</div>
+      <ul class="leaderboard" id="leaderboard-list"></ul>
+
+      <div class="divider">Answer Breakdown</div>
+      <div id="answer-breakdown"></div>
+
+      <div class="divider">Quiz History</div>
+      <div class="text-muted mb-2" id="history-note">History is grouped by your email identity.</div>
+      <ul class="history-list" id="history-list"></ul>
+    </div>
+  </main>
+
+  <script src="/static/script.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

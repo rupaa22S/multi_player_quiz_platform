@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBlast | Quiz</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body data-page="quiz">
+  <div id="toast-container"></div>
+  <nav>
+    <a class="logo" href="/">Quiz<span>Blast</span></a>
+  </nav>
+
+  <main class="page container container-narrow">
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-cyan">📝</div>
+        <div>
+          <h2>Live Quiz</h2>
+          <p class="text-muted">Answer the questions when the admin starts the quiz.</p>
+        </div>
+      </div>
+
+      <div class="room-code-display">
+        <div>
+          <div class="text-muted">Room code</div>
+          <div class="code" id="quiz-room-code">------</div>
+        </div>
+        <span class="badge badge-yellow">Connected</span>
+      </div>
+
+      <div class="waiting-screen" id="waiting-screen">
+        <div class="pulse-icon">⏳</div>
+        <h2>Waiting for the quiz to start</h2>
+        <p class="text-muted">The host will start the quiz and questions will appear here shortly.</p>
+      </div>
+
+      <div class="hidden" id="quiz-screen">
+        <div class="progress-wrap">
+          <div class="progress-bar" style="width: 0%"></div>
+        </div>
+        <div id="questions-list"></div>
+        <button id="submit-answers-btn" class="btn btn-primary btn-full">Submit All Answers</button>
+      </div>
+
+      <div id="submitted-screen" class="hidden animate-in mt-3">
+        <div class="card submitted-card">
+          <div class="waiting-screen">
+            <div style="font-size:4rem">✅</div>
+            <h2>Answers Submitted</h2>
+            <p class="text-muted mt-2" id="quiz-status-note">Your answers have been saved. You can close this tab and return when the quiz ends.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/script.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
