@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard – QuizBlast</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div class="page">
+    <nav>
+      <a href="/" class="logo">Quiz<span>Blast</span></a>
+      <span id="room-status-badge" class="badge badge-yellow">⏳ Waiting</span>
+    </nav>
+
+    <div class="container" style="width:100%;max-width:860px">
+
+      <!-- Top row: room code + quiz info -->
+      <div class="two-col animate-in" style="margin-bottom:1.5rem">
+        <div class="card">
+          <div class="card-header">
+            <div class="icon icon-yellow">🏠</div>
+            <h3>Room Code</h3>
+          </div>
+          <div class="room-code-display">
+            <button class="code room-code-button" id="room-code-display" onclick="copyCode()" title="Click to copy room code">------</button>
+            <button class="btn btn-outline btn-sm" onclick="copyCode()">📋 Copy</button>
+          </div>
+          <p class="text-muted mt-2" style="font-size:.83rem">
+            Share this code — participants visit <code style="color:var(--cyan)" id="server-url">http://&lt;your-ip&gt;:8000</code>
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="icon icon-cyan">📊</div>
+            <h3>Quiz Info</h3>
+          </div>
+          <div class="stats-grid" style="margin-bottom:0">
+            <div class="stat-box">
+              <div class="stat-value" id="stat-players">0</div>
+              <div class="stat-label">Players</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="stat-submitted">0</div>
+              <div class="stat-label">Submitted</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="stat-questions">–</div>
+              <div class="stat-label">Questions</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="stat-difficulty" style="font-size:1rem">–</div>
+              <div class="stat-label">Difficulty</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main area: users + controls -->
+      <div class="two-col animate-in">
+
+        <!-- Participants panel -->
+        <div class="card">
+          <div class="card-header">
+            <div class="icon icon-green">👥</div>
+            <h3>Participants <span id="user-count" class="badge badge-green" style="font-size:.7rem">0</span></h3>
+          </div>
+
+          <div id="no-users" class="waiting-screen" style="padding:2rem 0">
+            <div class="pulse-icon">👀</div>
+            <p class="text-muted">Waiting for participants to join…</p>
+          </div>
+
+          <ul class="user-list" id="user-list"></ul>
+        </div>
+
+        <!-- Controls panel -->
+        <div class="card">
+          <div class="card-header">
+            <div class="icon icon-pink">⚙️</div>
+            <h3>Controls</h3>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:.75rem">
+            <button class="btn btn-primary" id="start-btn" onclick="startQuiz()">
+              ▶ Start Quiz
+            </button>
+            <button class="btn btn-danger" id="end-btn" onclick="endQuiz()" disabled>
+              ⏹ End Quiz & Show Results
+            </button>
+            <div class="divider">leaderboard</div>
+            <button class="btn btn-outline" onclick="loadLeaderboard()">
+              🏆 View Leaderboard
+            </button>
+            <button class="btn btn-outline" onclick="window.location.href='/'">
+              ← Back to Home
+            </button>
+          </div>
+
+          <!-- Submission tracker -->
+          <div id="submission-section" class="hidden mt-3">
+            <div class="flex-between mb-1">
+              <span class="text-muted" style="font-size:.85rem">Submissions</span>
+              <span id="submission-count" class="text-yellow" style="font-weight:700">0/0</span>
+            </div>
+            <div class="progress-wrap">
+              <div class="progress-bar" id="submission-bar" style="width:0%"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Leaderboard (shown after quiz ends) -->
+      <div class="card animate-in mt-3 hidden" id="leaderboard-card">
+        <div class="card-header">
+          <div class="icon icon-yellow">🏆</div>
+          <h3>Leaderboard</h3>
+        </div>
+        <ul class="leaderboard" id="leaderboard-list"></ul>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/static/script.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const roomCode = params.get('room') || sessionStorage.getItem('room_code');
+    const adminId  = sessionStorage.getItem('admin_id');
+    const adminName = sessionStorage.getItem('user_name') || 'Admin';
+
+    let ws = null;
+    let submittedCount = 0;
+    let totalPlayers = 0;
+
+    // ── Init ──────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (!roomCode || !adminId) {
+        showToast('Session expired. Please create a new room.', 'error');
+        setTimeout(() => window.location.href = '/', 1500);
+        return;
+      }
+
+      document.getElementById('room-code-display').textContent = roomCode;
+      document.getElementById('server-url').textContent = `http://${location.hostname}:8000`;
+
+      await loadRoomInfo();
+      connectWebSocket();
+    });
+
+    async function loadRoomInfo() {
+      try {
+        const res = await fetch(`/room-info/${roomCode}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail);
+
+        document.getElementById('stat-questions').textContent = data.num_questions;
+        document.getElementById('stat-difficulty').textContent = data.difficulty;
+
+        updateStatus(data.status);
+        renderUserList(data.participants);
+      } catch (err) {
+        showToast('Could not load room info: ' + err.message, 'error');
+      }
+    }
+
+    // ── WebSocket ─────────────────────────────────────────
+    function connectWebSocket() {
+      const wsUrl = `ws://${location.host}/ws/${roomCode}?user_id=${adminId}&user_name=${encodeURIComponent(adminName)}&is_admin=true`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        showToast('Live updates connected ✓', 'success');
+        // Keepalive ping every 25 seconds
+        setInterval(() => ws.readyState === 1 && ws.send(JSON.stringify({event:'ping'})), 25000);
+      };
+
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        handleWsEvent(msg);
+      };
+
+      ws.onclose = () => showToast('WebSocket disconnected. Refresh to reconnect.', 'error');
+    }
+
+    function handleWsEvent(msg) {
+      switch(msg.event) {
+        case 'user_joined':
+          renderUserList(msg.users || []);
+          showToast(`${msg.user_name} joined!`, 'info');
+          break;
+        case 'user_left':
+          renderUserList(msg.users || []);
+          showToast(`${msg.user_name} left.`, 'info');
+          break;
+        case 'user_submitted':
+          submittedCount++;
+          document.getElementById('stat-submitted').textContent = submittedCount;
+          updateSubmissionProgress();
+          showToast(`${msg.user_name} submitted — Score: ${msg.score}`, 'success');
+          // Update score in user list
+          document.querySelectorAll('.user-item').forEach(el => {
+            if (parseInt(el.dataset.userId) === msg.user_id) {
+              const scoreEl = el.querySelector('.user-score');
+              if (scoreEl) scoreEl.textContent = `${msg.score} pts`;
+            }
+          });
+          break;
+        case 'quiz_ended':
+          renderLeaderboard(msg.leaderboard);
+          break;
+      }
+    }
+
+    // ── Render helpers ────────────────────────────────────
+    function renderUserList(users) {
+      const list = document.getElementById('user-list');
+      const noUsers = document.getElementById('no-users');
+      const count = document.getElementById('user-count');
+
+      totalPlayers = users.length;
+      count.textContent = users.length;
+      document.getElementById('stat-players').textContent = users.length;
+
+      if (users.length === 0) {
+        noUsers.classList.remove('hidden');
+        list.innerHTML = '';
+        return;
+      }
+      noUsers.classList.add('hidden');
+      list.innerHTML = users.map(u => `
+        <li class="user-item" data-user-id="${u.user_id}">
+          <div class="name">
+            <div class="avatar">${u.user_name.charAt(0).toUpperCase()}</div>
+            <span>${u.user_name}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span class="user-score text-muted" style="font-size:.85rem">–</span>
+            <button class="btn btn-danger btn-sm" onclick="kickUser(${u.user_id}, '${u.user_name}')">✕</button>
+          </div>
+        </li>
+      `).join('');
+
+      updateSubmissionProgress();
+    }
+
+    function updateSubmissionProgress() {
+      if (totalPlayers === 0) return;
+      const pct = Math.round((submittedCount / totalPlayers) * 100);
+      document.getElementById('submission-count').textContent = `${submittedCount}/${totalPlayers}`;
+      document.getElementById('submission-bar').style.width = pct + '%';
+    }
+
+    function renderLeaderboard(lb) {
+      const card = document.getElementById('leaderboard-card');
+      const list = document.getElementById('leaderboard-list');
+      card.classList.remove('hidden');
+
+      const medals = ['🥇','🥈','🥉'];
+      list.innerHTML = lb.map((u, i) => `
+        <li class="lb-item">
+          <span class="lb-rank">${medals[i] || '#'+(i+1)}</span>
+          <div class="lb-name">${u.name}</div>
+          <span class="lb-score">${u.score}</span>
+        </li>
+      `).join('');
+
+      card.scrollIntoView({behavior:'smooth'});
+    }
+
+    function updateStatus(status) {
+      const badge = document.getElementById('room-status-badge');
+      const startBtn = document.getElementById('start-btn');
+      const endBtn = document.getElementById('end-btn');
+      const subSection = document.getElementById('submission-section');
+
+      const map = {
+        waiting: {text: '⏳ Waiting', cls: 'badge-yellow'},
+        started: {text: '▶ Live',    cls: 'badge-green'},
+        closed:  {text: '✓ Ended',  cls: 'badge-muted'},
+      };
+      const s = map[status] || map.waiting;
+      badge.textContent = s.text;
+      badge.className = `badge ${s.cls}`;
+
+      if (status === 'started') {
+        startBtn.disabled = true;
+        endBtn.disabled = false;
+        subSection.classList.remove('hidden');
+      } else if (status === 'closed') {
+        startBtn.disabled = true;
+        endBtn.disabled = true;
+      }
+    }
+
+    // ── Actions ───────────────────────────────────────────
+    async function startQuiz() {
+      if (!confirm('Start the quiz now? All participants will receive questions.')) return;
+      const btn = document.getElementById('start-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Starting…';
+
+      try {
+        const res = await fetch('/start-quiz', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({room_code: roomCode, admin_id: parseInt(adminId)})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail);
+
+        showToast('Quiz started! Questions sent to all players.', 'success');
+        updateStatus('started');
+        btn.textContent = '▶ Quiz Running';
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '▶ Start Quiz';
+      }
+    }
+
+    async function endQuiz() {
+      if (!confirm('End the quiz? This will show results to all participants.')) return;
+
+      try {
+        const res = await fetch('/end-quiz', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({room_code: roomCode, admin_id: parseInt(adminId)})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail);
+
+        showToast('Quiz ended! Showing results.', 'success');
+        updateStatus('closed');
+        renderLeaderboard(data.leaderboard);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function kickUser(userId, userName) {
+      if (!confirm(`Remove ${userName} from the room?`)) return;
+
+      try {
+        const res = await fetch(`/remove-user/${userId}?room_code=${roomCode}`, {method: 'DELETE'});
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail);
+        showToast(`${userName} removed.`, 'info');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadLeaderboard() {
+      try {
+        const res = await fetch(`/leaderboard/${roomCode}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail);
+        renderLeaderboard(data.leaderboard);
+        showToast('Leaderboard loaded.', 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function copyCode() {
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(roomCode);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = roomCode;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          textarea.remove();
+        }
+        showToast('Room code copied!', 'success');
+      } catch (err) {
+        showToast('Could not copy room code.', 'error');
+      }
+    }
+  </script>
+</body>
+</html>

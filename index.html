@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizBlast – Multiplayer Quiz</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div class="page">
+    <nav>
+      <a href="/" class="logo">Quiz<span>Blast</span></a>
+      <span class="badge badge-yellow">⚡ Live Multiplayer</span>
+    </nav>
+
+    <section class="hero animate-in">
+      <div class="hero-tag">AI-Powered Quiz Platform</div>
+      <h1>Play. Compete. <em>Learn.</em></h1>
+      <p>Host real-time multiplayer quizzes powered by AI. Generate questions instantly, play with anyone on your local network.</p>
+    </section>
+
+    <div class="two-col animate-in">
+
+      <!-- Create Room -->
+      <div class="card">
+        <div class="card-header">
+          <div class="icon icon-yellow">🎮</div>
+          <div>
+            <h3>Create a Room</h3>
+            <p class="text-muted" style="font-size:.85rem">Host a quiz as admin</p>
+          </div>
+        </div>
+
+        <form id="create-form" onsubmit="return false">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" id="admin-name" placeholder="e.g. Alex" maxlength="50" required />
+          </div>
+          <div class="form-group">
+            <label>Quiz Topic</label>
+            <input type="text" id="quiz-topic" placeholder="e.g. World History, Python, Football…" maxlength="100" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Difficulty</label>
+              <select id="difficulty">
+                <option value="easy">🟢 Easy</option>
+                <option value="medium" selected>🟡 Medium</option>
+                <option value="hard">🔴 Hard</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Questions</label>
+              <input type="number" id="num-questions" value="5" min="1" max="20" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Question Type</label>
+            <select id="question-type">
+              <option value="mcq">📋 Multiple Choice (MCQ)</option>
+              <option value="blank">✏️ Fill in the Blanks</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-full mt-2" onclick="createRoom()" id="create-btn">
+            <span>Create Room & Generate Questions</span>
+          </button>
+          <p class="text-muted text-center mt-1" style="font-size:.8rem">AI will generate questions automatically</p>
+        </form>
+      </div>
+
+      <!-- Join Room -->
+      <div class="card">
+        <div class="card-header">
+          <div class="icon icon-pink">🚀</div>
+          <div>
+            <h3>Join a Room</h3>
+            <p class="text-muted" style="font-size:.85rem">Enter as a participant</p>
+          </div>
+        </div>
+
+        <form id="join-form" onsubmit="return false">
+          <div class="form-group">
+            <label>Your Name</label>
+            <input type="text" id="join-name" placeholder="e.g. Sam" maxlength="50" required />
+          </div>
+          <div class="form-group">
+            <label>Room Code</label>
+            <input type="text" id="room-code-input" placeholder="e.g. XK9F2A"
+              maxlength="6" style="text-transform:uppercase;letter-spacing:.1em;font-size:1.2rem;font-weight:700" required />
+          </div>
+
+          <div style="height:6rem"></div>
+
+          <button class="btn btn-pink btn-full" onclick="joinRoom()" id="join-btn">
+            Join Room →
+          </button>
+        </form>
+
+        <div class="divider">How it works</div>
+        <ol style="padding-left:1.2rem;color:var(--muted);font-size:.88rem;line-height:2">
+          <li>Admin creates a room &amp; gets a code</li>
+          <li>Share the code with participants on your WiFi</li>
+          <li>Everyone visits <code style="color:var(--cyan)">http://&lt;your-ip&gt;:8000</code></li>
+        </ol>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/static/script.js"></script>
+  <script>
+    async function createRoom() {
+      const name = document.getElementById('admin-name').value.trim();
+      const topic = document.getElementById('quiz-topic').value.trim();
+      const difficulty = document.getElementById('difficulty').value;
+      const num = parseInt(document.getElementById('num-questions').value);
+      const qtype = document.getElementById('question-type').value;
+
+      if (!name || !topic) return showToast('Please fill in all fields.', 'error');
+
+      const btn = document.getElementById('create-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Generating questions…';
+
+      try {
+        const res = await fetch('/create-room', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({admin_name: name, quiz_topic: topic, difficulty, num_questions: num, question_type: qtype})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to create room.');
+
+        showToast(`Room created! ${data.num_questions} questions ready.`, 'success');
+
+        // Save session info and redirect to admin dashboard
+        sessionStorage.setItem('room_code', data.room_code);
+        sessionStorage.setItem('admin_id', data.admin_id);
+        sessionStorage.setItem('is_admin', 'true');
+        sessionStorage.setItem('user_name', name);
+
+        setTimeout(() => { window.location.href = `/admin?room=${data.room_code}`; }, 800);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<span>Create Room & Generate Questions</span>';
+      }
+    }
+
+    async function joinRoom() {
+      const name = document.getElementById('join-name').value.trim();
+      const code = document.getElementById('room-code-input').value.trim().toUpperCase();
+
+      if (!name || !code) return showToast('Please fill in all fields.', 'error');
+
+      const btn = document.getElementById('join-btn');
+      btn.disabled = true;
+      btn.textContent = 'Joining…';
+
+      try {
+        const res = await fetch('/join-room', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, room_code: code})
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to join room.');
+
+        sessionStorage.setItem('user_id', data.user_id);
+        sessionStorage.setItem('room_code', data.room_code);
+        sessionStorage.setItem('is_admin', 'false');
+        sessionStorage.setItem('user_name', name);
+
+        if (data.rejoin || data.room_status === 'started' || data.room_status === 'closed') {
+          window.location.href = `/result?room=${code}&user=${data.user_id}`;
+        } else {
+          window.location.href = `/quiz?room=${code}&user=${data.user_id}`;
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Join Room →';
+      }
+    }
+
+    // Auto-uppercase room code as typed
+    document.getElementById('room-code-input')?.addEventListener('input', function() {
+      this.value = this.value.toUpperCase();
+    });
+  </script>
+</body>
+</html>

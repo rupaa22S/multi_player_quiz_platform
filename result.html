@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results – QuizBlast</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .score-hero {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .score-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(245,208,32,.08) 0%, transparent 70%);
+    }
+    .big-score {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(4rem, 10vw, 7rem);
+      font-weight: 800;
+      color: var(--yellow);
+      line-height: 1;
+      text-shadow: 0 0 40px rgba(245,208,32,.4);
+    }
+    .answer-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: start;
+      background: var(--bg3);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      border-left: 3px solid var(--border);
+      margin-bottom: .6rem;
+    }
+    .answer-row.correct-row { border-left-color: var(--green); }
+    .answer-row.wrong-row   { border-left-color: var(--red); }
+  </style>
+</head>
+<body>
+  <div id="toast-container"></div>
+
+  <div class="page">
+    <nav>
+      <a href="/" class="logo">Quiz<span>Blast</span></a>
+      <span class="badge badge-muted">✓ Ended</span>
+    </nav>
+
+    <div class="container" style="width:100%;max-width:700px">
+
+      <!-- Loading -->
+      <div id="loading" class="card text-center animate-in" style="padding:3rem">
+        <div class="flex-center">
+          <div class="spinner"></div>
+          <span class="text-muted">Loading your results…</span>
+        </div>
+      </div>
+
+      <!-- Results (hidden until loaded) -->
+      <div id="results-container" class="hidden animate-in">
+
+        <!-- Score Hero -->
+        <div class="score-hero">
+          <p class="text-muted mb-1" id="hero-topic" style="font-size:.85rem;text-transform:uppercase;letter-spacing:.08em"></p>
+          <div class="big-score" id="hero-score">0</div>
+          <p class="text-muted mt-1" id="hero-subtitle">pts</p>
+          <p class="mt-2" id="hero-name" style="font-size:1.1rem;font-weight:600"></p>
+        </div>
+
+        <!-- Stats row -->
+        <div class="stats-grid mb-3">
+          <div class="stat-box">
+            <div class="stat-value text-green" id="stat-correct">–</div>
+            <div class="stat-label">Correct</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value text-red" id="stat-wrong">–</div>
+            <div class="stat-label">Wrong</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value" id="stat-total">–</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-value text-yellow" id="stat-pct">–</div>
+            <div class="stat-label">Score %</div>
+          </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <div class="icon icon-yellow">🏆</div>
+            <h3>Leaderboard</h3>
+          </div>
+          <ul class="leaderboard" id="leaderboard-list"></ul>
+        </div>
+
+        <!-- Question breakdown -->
+        <div class="card mb-3">
+          <div class="card-header">
+            <div class="icon icon-cyan">📋</div>
+            <h3>Answer Breakdown</h3>
+          </div>
+          <div id="answer-breakdown"></div>
+        </div>
+
+        <div class="flex-center">
+          <a href="/" class="btn btn-primary">Play Again</a>
+          <button class="btn btn-outline" onclick="window.print()">🖨 Print Results</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/script.js"></script>
+  <script>
+    const params   = new URLSearchParams(window.location.search);
+    const roomCode = params.get('room') || sessionStorage.getItem('room_code');
+    const userId   = parseInt(params.get('user') || sessionStorage.getItem('user_id'));
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (!roomCode || !userId) {
+        document.getElementById('loading').innerHTML =
+          '<p class="text-muted">No session found. <a href="/" style="color:var(--yellow)">Go home</a></p>';
+        return;
+      }
+
+      // Also connect WS to listen for quiz_ended event in case still waiting
+      connectWsForRedirect();
+
+      try {
+        const res = await fetch(`/results/${roomCode}/${userId}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          document.getElementById('loading').innerHTML =
+            `<p class="text-muted">${data.detail || 'Could not load results.'}</p>`;
+          return;
+        }
+
+        renderResults(data);
+      } catch (err) {
+        document.getElementById('loading').innerHTML =
+          `<p class="text-red">Error: ${err.message}</p>`;
+      }
+    });
+
+    function connectWsForRedirect() {
+      try {
+        const userName = sessionStorage.getItem('user_name') || 'Player';
+        const ws = new WebSocket(`ws://${location.host}/ws/${roomCode}?user_id=${userId}&user_name=${encodeURIComponent(userName)}&is_admin=false`);
+        ws.onmessage = (e) => {
+          const msg = JSON.parse(e.data);
+          if (msg.event === 'quiz_ended') window.location.reload();
+        };
+      } catch(e) {}
+    }
+
+    function renderResults(data) {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('results-container').classList.remove('hidden');
+
+      const correct = data.question_results.filter(r => r.is_correct).length;
+      const wrong   = data.question_results.length - correct;
+      const pct     = data.total_questions > 0 ? Math.round((data.score / data.total_questions) * 100) : 0;
+
+      // Hero
+      document.getElementById('hero-topic').textContent  = data.quiz_topic;
+      document.getElementById('hero-score').textContent  = data.score;
+      document.getElementById('hero-subtitle').textContent = `out of ${data.total_questions}`;
+      document.getElementById('hero-name').textContent   = `${data.user_name}'s Results`;
+
+      // Stats
+      document.getElementById('stat-correct').textContent = correct;
+      document.getElementById('stat-wrong').textContent   = wrong;
+      document.getElementById('stat-total').textContent   = data.total_questions;
+      document.getElementById('stat-pct').textContent     = pct + '%';
+
+      // Leaderboard
+      const medals = ['🥇','🥈','🥉'];
+      document.getElementById('leaderboard-list').innerHTML =
+        data.leaderboard.map((u, i) => `
+          <li class="lb-item ${u.is_you ? 'is-you' : ''}">
+            <span class="lb-rank">${medals[i] || '#'+(i+1)}</span>
+            <div class="lb-name">${u.name} ${u.is_you ? '<span class="badge badge-cyan" style="font-size:.7rem">You</span>' : ''}</div>
+            <span class="lb-score">${u.score}</span>
+          </li>
+        `).join('');
+
+      // Answer breakdown
+      document.getElementById('answer-breakdown').innerHTML =
+        data.question_results.map((r, i) => `
+          <div class="answer-row ${r.is_correct ? 'correct-row' : 'wrong-row'}">
+            <div>
+              <p style="font-size:.88rem;font-weight:700;margin-bottom:.35rem">
+                <span class="${r.is_correct ? 'text-green' : 'text-red'}">${r.is_correct ? 'Correct' : 'Wrong'}</span>
+              </p>
+              <p style="font-size:.78rem;color:var(--muted);margin-bottom:.3rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em">
+                Q${i+1} · ${r.type === 'mcq' ? 'MCQ' : 'Fill-in-blank'}
+              </p>
+              <p style="margin-bottom:.5rem">${r.question_text}</p>
+              <p style="font-size:.88rem">
+                <span class="text-muted">Your answer: </span>
+                <strong class="${r.is_correct ? 'text-green' : 'text-red'}">${r.user_answer || '—'}</strong>
+              </p>
+              <p style="font-size:.88rem">
+                <span class="text-muted">Correct answer: </span>
+                <strong class="text-green">${r.correct_answer}</strong>
+              </p>
+            </div>
+            <span style="font-size:1.4rem">${r.is_correct ? '✅' : '❌'}</span>
+          </div>
+        `).join('');
+    }
+  </script>
+</body>
+</html>
